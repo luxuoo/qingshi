@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>轻食悦膳 - 健康食谱</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- ECharts -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <!-- 自定义CSS -->
+    <link rel="stylesheet" href="css/style.css">
+    <!-- 配置Tailwind -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            300: '#86efac',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        },
+                        accent: {
+                            50: '#fff7ed',
+                            100: '#ffedd5',
+                            200: '#fed7aa',
+                            300: '#fdba74',
+                            400: '#fb923c',
+                            500: '#f97316',
+                            600: '#ea580c',
+                            700: '#c2410c',
+                            800: '#9a3412',
+                            900: '#7c2d12',
+                        },
+                        cream: {
+                            50: '#FEFDF8',
+                            100: '#FDF9E7',
+                            200: '#FBF3D5',
+                            300: '#F8EBC0',
+                            400: '#F5E3AB',
+                            500: '#F2DB96',
+                            600: '#E8C96B',
+                            700: '#D4B24A',
+                            800: '#A98E3A',
+                            900: '#7E6A2B',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans SC"', 'system-ui', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 2px 15px -3px rgba(0, 0, 0, 0.07), 0 10px 20px -2px rgba(0, 0, 0, 0.04)',
+                        'medium': '0 4px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+                        'large': '0 10px 40px -10px rgba(0, 0, 0, 0.15), 0 20px 25px -15px rgba(0, 0, 0, 0.1)',
+                        'inner-soft': 'inset 0 2px 4px 0 rgba(0, 0, 0, 0.05)',
+                        'card': '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+                        'card-hover': '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                    },
+                    borderRadius: {
+                        '2xl': '1rem',
+                        '3xl': '1.5rem',
+                        '4xl': '2rem',
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'slide-down': 'slideDown 0.3s ease-out',
+                        'fade-in': 'fadeIn 0.5s ease-out',
+                        'scale-in': 'scaleIn 0.3s ease-out',
+                        'bounce-in': 'bounceIn 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55)',
+                        'pulse-soft': 'pulseSoft 2s infinite',
+                        'spin-slow': 'spin 3s linear infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        slideDown: {
+                            '0%': { transform: 'translateY(-10px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' },
+                        },
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        scaleIn: {
+                            '0%': { transform: 'scale(0.9)', opacity: '0' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        bounceIn: {
+                            '0%': { transform: 'scale(0.3)', opacity: '0' },
+                            '50%': { transform: 'scale(1.05)' },
+                            '70%': { transform: 'scale(0.9)' },
+                            '100%': { transform: 'scale(1)', opacity: '1' },
+                        },
+                        pulseSoft: {
+                            '0%, 100%': { opacity: '1' },
+                            '50%': { opacity: '0.7' },
+                        },
+                    },
+                }
+            }
+        }
+    </script>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+</head>
+<body class="bg-cream-50 dark:bg-gray-900 font-sans transition-colors duration-300">
+    <!-- 登录/注册界面 -->
+    <div id="auth-screen" class="fixed inset-0 z-50 bg-cream-50 dark:bg-gray-900 flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <!-- Logo -->
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg">
+                    <svg class="w-12 h-12 text-white" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                </div>
+                <h1 class="text-2xl font-bold text-gray-800 dark:text-white">轻食悦膳</h1>
+                <p class="text-gray-500 dark:text-gray-400 mt-1">健康饮食助手</p>
+            </div>
+
+            <!-- 登录表单 -->
+            <div id="login-form" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-6">登录</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">用户名</label>
+                        <input type="text" id="login-username" placeholder="请输入用户名" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">密码</label>
+                        <input type="password" id="login-password" placeholder="请输入密码" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                    </div>
+                    <button onclick="handleLogin()" class="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl font-medium transition-all duration-200 shadow-md">登录</button>
+                </div>
+                <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+                    还没有账号？<a href="#" onclick="showRegister();return false;" class="text-primary-500 hover:text-primary-600 font-medium">立即注册</a>
+                </p>
+            </div>
+
+            <!-- 注册表单 -->
+            <div id="register-form" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-lg hidden">
+                <h2 class="text-xl font-bold text-gray-800 dark:text-white mb-6">注册</h2>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">用户名</label>
+                        <input type="text" id="reg-username" placeholder="请输入用户名" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">手机号</label>
+                        <input type="tel" id="reg-phone" placeholder="请输入手机号" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">密码</label>
+                        <input type="password" id="reg-password" placeholder="请设置密码（至少6位）" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">确认密码</label>
+                        <input type="password" id="reg-confirm" placeholder="请再次输入密码" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500">
+                    </div>
+                    <button onclick="handleRegister()" class="w-full py-3 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl font-medium transition-all duration-200 shadow-md">注册</button>
+                </div>
+                <p class="text-center text-sm text-gray-500 dark:text-gray-400 mt-4">
+                    已有账号？<a href="#" onclick="showLogin();return false;" class="text-primary-500 hover:text-primary-600 font-medium">去登录</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载动画 -->
+    <div id="loading-screen" class="fixed inset-0 z-50 flex items-center justify-center bg-cream-50 dark:bg-gray-900 transition-opacity duration-500">
+        <div class="text-center">
+            <div class="w-16 h-16 mx-auto mb-4 relative">
+                <div class="absolute inset-0 rounded-full border-4 border-primary-200 dark:border-primary-800"></div>
+                <div class="absolute inset-0 rounded-full border-4 border-transparent border-t-primary-500 animate-spin-slow"></div>
+                <div class="absolute inset-2 rounded-full border-4 border-transparent border-t-accent-400 animate-spin" style="animation-direction: reverse; animation-duration: 1.5s;"></div>
+            </div>
+            <p class="text-primary-600 dark:text-primary-400 font-medium animate-pulse-soft">轻食悦膳</p>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">正在加载健康美食...</p>
+        </div>
+    </div>
+
+    <!-- 主应用容器 -->
+    <div id="app" class="min-h-screen pb-20 md:pb-0">
+        <!-- 顶部导航栏 (移动端) -->
+        <header id="mobile-header" class="md:hidden fixed top-0 left-0 right-0 z-40 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-700">
+            <div class="flex items-center justify-between px-4 h-14">
+                <div class="flex items-center space-x-2">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-md">
+                        <svg class="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <span class="text-lg font-bold text-gray-800 dark:text-white">轻食悦膳</span>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button id="search-toggle" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </button>
+                    <button id="theme-toggle-mobile" class="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors">
+                        <svg class="w-5 h-5 text-gray-600 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- 桌面端侧边栏 -->
+        <aside id="desktop-sidebar" class="hidden md:flex fixed left-0 top-0 bottom-0 w-64 bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 z-40 flex-col">
+            <div class="p-6 border-b border-gray-100 dark:border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center shadow-lg">
+                        <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h1 class="text-xl font-bold text-gray-800 dark:text-white">轻食悦膳</h1>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">健康饮食助手</p>
+                    </div>
+                </div>
+            </div>
+            
+            <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+                <a href="#" class="nav-item active flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200" data-page="home">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    首页
+                </a>
+                <a href="#" class="nav-item flex items-center px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200" data-page="recipes">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    食谱查询
+                </a>
+                <a href="#" class="nav-item flex items-center px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200" data-page="ingredients">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    食材库
+                </a>
+                <a href="#" class="nav-item flex items-center px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200" data-page="plan">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    饮食计划
+                </a>
+                <a href="#" class="nav-item flex items-center px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200" data-page="calculator">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    营养计算器
+                </a>
+                <a href="#" class="nav-item flex items-center px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200" data-page="community">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
+                    </svg>
+                    社区分享
+                </a>
+                <a href="#" class="nav-item flex items-center px-4 py-3 rounded-xl text-sm font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-all duration-200" data-page="profile">
+                    <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    个人中心
+                </a>
+            </nav>
+            
+            <div class="p-4 border-t border-gray-100 dark:border-gray-700">
+                <button id="theme-toggle-desktop" class="w-full flex items-center justify-center px-4 py-3 rounded-xl bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200">
+                    <svg class="w-5 h-5 text-gray-600 dark:text-gray-300 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                    </svg>
+                    <span class="text-sm font-medium text-gray-600 dark:text-gray-300">切换主题</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 主内容区域 -->
+        <main id="main-content" class="md:ml-64 pt-14 md:pt-0 min-h-screen">
+            <!-- 首页 -->
+            <section id="page-home" class="page active p-4 md:p-8 max-w-7xl mx-auto">
+                <!-- 欢迎横幅 -->
+                <div class="mb-8 animate-slide-up">
+                    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-primary-500 via-primary-400 to-accent-400 p-6 md:p-8 text-white shadow-large">
+                        <div class="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 transform rotate-12"></div>
+                        <div class="absolute bottom-0 left-0 w-48 h-48 bg-white/10 rounded-full -ml-16 -mb-16 transform -rotate-12"></div>
+                        <div class="relative z-10">
+                            <h2 class="text-2xl md:text-3xl font-bold mb-2">今日份健康美食</h2>
+                            <p class="text-white/90 mb-4">为您精选营养均衡的食谱，开启健康生活</p>
+                            <div class="flex flex-wrap gap-3">
+                                <button onclick="navigateTo('recipes')" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 rounded-xl font-medium transition-all duration-200 backdrop-blur-sm">
+                                    查看推荐
+                                </button>
+                                <button onclick="navigateTo('plan')" class="px-5 py-2.5 bg-white text-primary-600 hover:bg-white/90 rounded-xl font-medium transition-all duration-200 shadow-md">
+                                    开始打卡
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 营养数据概览 -->
+                <div class="mb-8 animate-slide-up" style="animation-delay: 0.1s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">今日营养概览</h3>
+                        <button onclick="navigateTo('calculator')" class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">查看详情</button>
+                    </div>
+                    <div id="nutrition-overview" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+                </div>
+
+                <!-- 每日推荐轮播（动态渲染） -->
+                <div class="mb-8 animate-slide-up" style="animation-delay: 0.2s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">每日减脂推荐</h3>
+                        <button onclick="refreshCarousel()" class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">换一批</button>
+                    </div>
+                    <div class="relative">
+                        <div id="daily-carousel" class="flex overflow-x-auto gap-4 pb-4 snap-x snap-mandatory scrollbar-hide"></div>
+                    </div>
+                </div>
+
+                <!-- 热门食谱分类 -->
+                <div class="mb-8 animate-slide-up" style="animation-delay: 0.3s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">热门食谱分类</h3>
+                        <button onclick="navigateTo('recipes')" class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">全部分类</button>
+                    </div>
+                    <div class="grid grid-cols-4 md:grid-cols-8 gap-4">
+                        <button onclick="goToCategory('减脂')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-green-100 to-green-200 dark:from-green-900/30 dark:to-green-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🥗</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">减脂餐</span>
+                        </button>
+                        <button onclick="goToCategory('增肌')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-red-100 to-red-200 dark:from-red-900/30 dark:to-red-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🥩</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">增肌餐</span>
+                        </button>
+                        <button onclick="goToCategory('控糖')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🍲</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">控糖餐</span>
+                        </button>
+                        <button onclick="goToCategory('养胃')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900/30 dark:to-purple-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🥣</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">养胃餐</span>
+                        </button>
+                        <button onclick="goToCategory('低卡')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-100 to-yellow-200 dark:from-yellow-900/30 dark:to-yellow-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🍎</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">低卡餐</span>
+                        </button>
+                        <button onclick="goToCategory('海鲜')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-100 to-pink-200 dark:from-pink-900/30 dark:to-pink-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🍤</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">海鲜餐</span>
+                        </button>
+                        <button onclick="goToCategory('素食')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-900/30 dark:to-indigo-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🥗</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">素食餐</span>
+                        </button>
+                        <button onclick="goToCategory('家常')" class="flex flex-col items-center p-3 rounded-2xl bg-white dark:bg-gray-800 shadow-card hover:shadow-card-hover transition-all duration-300 transform hover:-translate-y-1">
+                            <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-teal-100 to-teal-200 dark:from-teal-900/30 dark:to-teal-800/30 flex items-center justify-center mb-2"><span class="text-2xl">🍳</span></div>
+                            <span class="text-xs font-medium text-gray-700 dark:text-gray-300">家常菜</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 今日打卡 & 健康小贴士 -->
+                <div class="grid md:grid-cols-2 gap-6 mb-8 animate-slide-up" style="animation-delay: 0.4s">
+                    <!-- 今日打卡（动态渲染） -->
+                    <div id="checkin-section" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card"></div>
+
+                    <!-- 健康小贴士（动态渲染） -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-bold text-gray-800 dark:text-white">健康小贴士</h3>
+                            <button onclick="refreshTip()" class="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 font-medium">换一条</button>
+                        </div>
+                        <div id="tips-container"></div>
+                    </div>
+                </div>
+
+                <!-- 营养数据图表 -->
+                <div class="mb-8 animate-slide-up" style="animation-delay: 0.5s">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-bold text-gray-800 dark:text-white">营养摄入分析</h3>
+                        <div class="flex items-center space-x-2">
+                            <button id="chart-week-btn" onclick="switchChartPeriod('week')" class="px-3 py-1.5 bg-primary-100 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 rounded-lg text-sm font-medium">本周</button>
+                            <button id="chart-month-btn" onclick="switchChartPeriod('month')" class="px-3 py-1.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors">本月</button>
+                        </div>
+                    </div>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">
+                            <h4 class="font-medium text-gray-800 dark:text-white mb-4">热量摄入趋势</h4>
+                            <div id="calorie-chart" class="h-64"></div>
+                        </div>
+                        <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">
+                            <h4 class="font-medium text-gray-800 dark:text-white mb-4">营养素占比</h4>
+                            <div id="nutrition-chart" class="h-64"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 食谱查询页面 -->
+            <section id="page-recipes" class="page p-4 md:p-8 max-w-7xl mx-auto hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">食谱查询</h2>
+                    <p class="text-gray-500 dark:text-gray-400">发现健康美味的食谱</p>
+                </div>
+                
+                <!-- 搜索栏 -->
+                <div class="mb-6">
+                    <div class="relative">
+                        <input type="text" id="recipe-search" placeholder="搜索食谱、食材..." class="w-full px-5 py-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-card transition-all duration-200">
+                        <button class="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 筛选标签 -->
+                <div class="flex flex-wrap gap-2 mb-3">
+                    <button class="filter-tag active px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-medium transition-all duration-200">全部</button>
+                    <button class="filter-tag px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">减脂</button>
+                    <button class="filter-tag px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">增肌</button>
+                    <button class="filter-tag px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">控糖</button>
+                    <button class="filter-tag px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">养胃</button>
+                    <button class="filter-tag px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">低卡</button>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <span class="text-xs text-gray-400 dark:text-gray-500 py-2 mr-1">餐食:</span>
+                    <button class="filter-meal px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-orange-50 hover:text-orange-600 dark:hover:bg-orange-900/20 dark:hover:text-orange-400 rounded-lg text-xs font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">🌅 早餐</button>
+                    <button class="filter-meal px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-yellow-50 hover:text-yellow-600 dark:hover:bg-yellow-900/20 dark:hover:text-yellow-400 rounded-lg text-xs font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">☀️ 午餐</button>
+                    <button class="filter-meal px-3 py-1.5 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-purple-50 hover:text-purple-600 dark:hover:bg-purple-900/20 dark:hover:text-purple-400 rounded-lg text-xs font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">🌙 晚餐</button>
+                </div>
+                
+                <!-- 食谱网格 -->
+                <div id="recipe-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- 食谱卡片会通过JavaScript动态生成 -->
+                </div>
+            </section>
+
+            <!-- 食材库页面 -->
+            <section id="page-ingredients" class="page p-4 md:p-8 max-w-7xl mx-auto hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">食材库</h2>
+                    <p class="text-gray-500 dark:text-gray-400">了解食材营养，科学搭配饮食</p>
+                </div>
+                
+                <!-- 搜索栏 -->
+                <div class="mb-6">
+                    <div class="relative">
+                        <input type="text" id="ingredient-search" placeholder="搜索食材..." class="w-full px-5 py-4 bg-white dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 shadow-card transition-all duration-200">
+                        <button class="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 bg-primary-500 hover:bg-primary-600 text-white rounded-xl transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 食材分类 -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button class="ingredient-category active px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-medium transition-all duration-200">全部</button>
+                    <button class="ingredient-category px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">蔬菜</button>
+                    <button class="ingredient-category px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">水果</button>
+                    <button class="ingredient-category px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">肉类</button>
+                    <button class="ingredient-category px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">海鲜</button>
+                    <button class="ingredient-category px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">谷物</button>
+                    <button class="ingredient-category px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700">豆制品</button>
+                </div>
+                
+                <!-- 食材列表 -->
+                <div id="ingredient-list" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- 食材卡片会通过JavaScript动态生成 -->
+                </div>
+            </section>
+
+            <!-- 饮食计划页面 -->
+            <section id="page-plan" class="page p-4 md:p-8 max-w-7xl mx-auto hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">饮食计划</h2>
+                    <p class="text-gray-500 dark:text-gray-400">制定专属健康饮食方案</p>
+                </div>
+                
+                <!-- 7天计划切换 -->
+                <div id="day-tabs" class="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide"></div>
+                
+                <!-- 每日计划（动态渲染） -->
+                <div id="plan-meals" class="grid md:grid-cols-3 gap-6 mb-8"></div>
+                
+                <!-- 每日总结（动态渲染） -->
+                <div id="plan-summary" class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card mb-8">
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-4">今日饮食总结</h3>
+                </div>
+                
+                <!-- 7天计划概览 -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-4">7天饮食计划概览</h3>
+                    <div id="weekly-overview" class="grid grid-cols-7 gap-2"></div>
+                </div>
+            </section>
+
+            <!-- 营养计算器页面 -->
+            <section id="page-calculator" class="page p-4 md:p-8 max-w-7xl mx-auto hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">营养计算器</h2>
+                    <p class="text-gray-500 dark:text-gray-400">计算食物热量与营养成分</p>
+                </div>
+                
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- 食物搜索 -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-4">添加食物</h3>
+                        <div class="relative mb-4">
+                            <input type="text" id="food-search" placeholder="搜索食物..." class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-200">
+                            <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                            </svg>
+                            <div id="food-search-results" class="absolute left-0 right-0 top-full mt-1 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-100 dark:border-gray-700 z-20 max-h-60 overflow-y-auto hidden"></div>
+                        </div>
+                        
+                        <!-- 常用食物快捷添加 -->
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">常用食物</h4>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button onclick="openFoodDetail('米饭')" class="food-quick-add p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-left hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer">
+                                    <div class="font-medium text-gray-800 dark:text-white text-sm">米饭</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">116千卡/100g</div>
+                                </button>
+                                <button onclick="openFoodDetail('鸡胸肉')" class="food-quick-add p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-left hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer">
+                                    <div class="font-medium text-gray-800 dark:text-white text-sm">鸡胸肉</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">133千卡/100g</div>
+                                </button>
+                                <button onclick="openFoodDetail('鸡蛋')" class="food-quick-add p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-left hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer">
+                                    <div class="font-medium text-gray-800 dark:text-white text-sm">鸡蛋</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">144千卡/100g</div>
+                                </button>
+                                <button onclick="openFoodDetail('西蓝花')" class="food-quick-add p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl text-left hover:bg-primary-50 dark:hover:bg-primary-900/20 transition-colors cursor-pointer">
+                                    <div class="font-medium text-gray-800 dark:text-white text-sm">西蓝花</div>
+                                    <div class="text-xs text-gray-500 dark:text-gray-400">34千卡/100g</div>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- 已添加食物 -->
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 mb-3">已添加食物</h4>
+                            <div id="food-list" class="space-y-2"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- 营养统计（动态渲染） -->
+                    <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card">
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-4">营养统计</h3>
+                        <div id="calc-stats"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 社区分享页面 -->
+            <section id="page-community" class="page p-4 md:p-8 max-w-7xl mx-auto hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">社区分享</h2>
+                    <p class="text-gray-500 dark:text-gray-400">分享您的健康饮食心得，与社区互动</p>
+                </div>
+
+                <!-- 发帖区域 -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card mb-6">
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-4">发布新帖</h3>
+                    <div class="mb-4">
+                        <input type="text" id="post-title" placeholder="帖子标题" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-200">
+                    </div>
+                    <div class="mb-4">
+                        <textarea id="post-content" placeholder="分享您的健康饮食心得..." rows="4" class="w-full px-4 py-3 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-200 resize-none"></textarea>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <button id="add-image-btn" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-400 rounded-lg text-sm transition-colors flex items-center">
+                                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                                添加图片
+                            </button>
+                            <select id="post-tag" class="px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-lg text-sm border-none focus:outline-none focus:ring-2 focus:ring-primary-500">
+                                <option value="分享">分享</option>
+                                <option value="食谱">食谱</option>
+                                <option value="心得">心得</option>
+                                <option value="提问">提问</option>
+                                <option value="打卡">打卡</option>
+                            </select>
+                        </div>
+                        <button onclick="createPost()" class="px-6 py-2.5 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 text-white rounded-xl font-medium transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5">
+                            发布
+                        </button>
+                    </div>
+                    <input type="file" id="post-image-input" accept="image/*" class="hidden">
+                </div>
+
+                <!-- 帖子筛选 -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    <button class="post-filter active px-4 py-2 bg-primary-500 text-white rounded-xl text-sm font-medium transition-all duration-200" data-filter="all">全部</button>
+                    <button class="post-filter px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700" data-filter="分享">分享</button>
+                    <button class="post-filter px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700" data-filter="食谱">食谱</button>
+                    <button class="post-filter px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700" data-filter="心得">心得</button>
+                    <button class="post-filter px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700" data-filter="提问">提问</button>
+                    <button class="post-filter px-4 py-2 bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-primary-50 hover:text-primary-600 dark:hover:bg-primary-900/20 dark:hover:text-primary-400 rounded-xl text-sm font-medium transition-all duration-200 border border-gray-200 dark:border-gray-700" data-filter="打卡">打卡</button>
+                </div>
+
+                <!-- 帖子列表 -->
+                <div id="post-list" class="space-y-4">
+                    <!-- 帖子会通过JavaScript动态生成 -->
+                </div>
+            </section>
+
+            <!-- 个人中心页面 -->
+            <section id="page-profile" class="page p-4 md:p-8 max-w-7xl mx-auto hidden">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800 dark:text-white mb-2">个人中心</h2>
+                    <p class="text-gray-500 dark:text-gray-400">管理您的健康数据</p>
+                </div>
+                
+                <!-- 用户信息卡片 -->
+                <div class="bg-gradient-to-r from-primary-500 to-primary-600 rounded-2xl p-6 text-white mb-6 shadow-lg">
+                    <div class="flex items-center mb-4">
+                        <div class="w-16 h-16 rounded-full bg-white/20 flex items-center justify-center mr-4 backdrop-blur-sm">
+                            <svg class="w-8 h-8 text-white" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-xl font-bold">健康达人</h3>
+                            <p class="text-white/80">坚持健康饮食第 28 天</p>
+                        </div>
+                    </div>
+                    <div id="profile-stats" class="grid grid-cols-3 gap-4">
+                        <div class="text-center"><div class="text-2xl font-bold">0</div><div class="text-white/80 text-sm">收藏食谱</div></div>
+                        <div class="text-center"><div class="text-2xl font-bold">0</div><div class="text-white/80 text-sm">浏览记录</div></div>
+                        <div class="text-center"><div class="text-2xl font-bold">0</div><div class="text-white/80 text-sm">待减重(kg)</div></div>
+                    </div>
+                </div>
+                
+                <!-- 身体数据（动态渲染） -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card mb-6">
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-4">身体数据</h3>
+                    <div id="profile-body-data"></div>
+                </div>
+                
+                <!-- 收藏列表 -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-card mb-6">
+                    <h3 class="font-bold text-gray-800 dark:text-white p-6 pb-2">我的收藏</h3>
+                    <div id="profile-favorites" class="px-6 pb-4 space-y-2"></div>
+                </div>
+
+                <!-- 浏览历史 -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-card mb-6">
+                    <h3 class="font-bold text-gray-800 dark:text-white p-6 pb-2">浏览历史</h3>
+                    <div id="profile-history" class="px-6 pb-4 space-y-2"></div>
+                </div>
+
+                <!-- 营养目标 -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-card mb-6 p-6">
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-4">营养目标</h3>
+                    <div id="profile-goal"></div>
+                </div>
+                
+                <!-- 主题切换 -->
+                <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card mb-6">
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-4">外观设置</h3>
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/>
+                                </svg>
+                            </div>
+                            <span class="font-medium text-gray-800 dark:text-white">深色模式</span>
+                        </div>
+                        <button id="theme-toggle-profile" class="relative w-12 h-6 bg-gray-200 dark:bg-primary-500 rounded-full transition-colors duration-300">
+                            <div class="absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-300 dark:translate-x-6"></div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 退出登录 -->
+                <button onclick="handleLogout()" class="w-full py-3 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-xl font-medium transition-all duration-200 hover:bg-red-100 dark:hover:bg-red-900/30">
+                    退出登录
+                </button>
+            </section>
+        </main>
+
+        <!-- 移动端底部导航 -->
+        <nav id="mobile-nav" class="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-gray-800/80 backdrop-blur-md border-t border-gray-100 dark:border-gray-700 z-40">
+            <div class="flex items-center justify-around h-16">
+                <button class="mobile-nav-item active flex flex-col items-center justify-center w-16 h-16 text-primary-500" data-page="home">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    <span class="text-xs font-medium">首页</span>
+                </button>
+                <button class="mobile-nav-item flex flex-col items-center justify-center w-16 h-16 text-gray-400 dark:text-gray-500" data-page="recipes">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
+                    </svg>
+                    <span class="text-xs font-medium">食谱</span>
+                </button>
+                <button class="mobile-nav-item flex flex-col items-center justify-center w-16 h-16 text-gray-400 dark:text-gray-500" data-page="ingredients">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                    </svg>
+                    <span class="text-xs font-medium">食材</span>
+                </button>
+                <button class="mobile-nav-item flex flex-col items-center justify-center w-16 h-16 text-gray-400 dark:text-gray-500" data-page="plan">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    <span class="text-xs font-medium">计划</span>
+                </button>
+                <button class="mobile-nav-item flex flex-col items-center justify-center w-16 h-16 text-gray-400 dark:text-gray-500" data-page="community">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z"/>
+                    </svg>
+                    <span class="text-xs font-medium">社区</span>
+                </button>
+                <button class="mobile-nav-item flex flex-col items-center justify-center w-16 h-16 text-gray-400 dark:text-gray-500" data-page="profile">
+                    <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                    </svg>
+                    <span class="text-xs font-medium">我的</span>
+                </button>
+            </div>
+        </nav>
+    </div>
+
+    <!-- 食谱详情弹窗 -->
+    <div id="recipe-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="modal-overlay"></div>
+        <div class="absolute inset-4 md:inset-8 lg:inset-16 bg-white dark:bg-gray-800 rounded-3xl overflow-hidden shadow-2xl transform transition-all duration-300 scale-95 opacity-0" id="modal-content">
+            <div class="h-full overflow-y-auto">
+                <!-- 弹窗头部 -->
+                <div class="relative h-64 md:h-80">
+                    <img src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&h=600&fit=crop" alt="食谱图片" class="w-full h-full object-cover">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent"></div>
+                    <button id="close-modal" class="absolute top-4 right-4 w-10 h-10 bg-white/90 dark:bg-gray-800/90 rounded-full flex items-center justify-center backdrop-blur-sm hover:bg-white dark:hover:bg-gray-800 transition-colors">
+                        <svg class="w-5 h-5 text-gray-800 dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                    <div class="absolute bottom-4 left-4 right-4">
+                        <div class="flex items-center space-x-2 mb-2">
+                            <span class="px-3 py-1 bg-primary-500 text-white text-xs font-medium rounded-full">减脂餐</span>
+                            <span class="px-3 py-1 bg-white/90 dark:bg-gray-800/90 text-gray-800 dark:text-white text-xs font-medium rounded-full backdrop-blur-sm">简单难度</span>
+                        </div>
+                        <h2 class="text-2xl md:text-3xl font-bold text-white">藜麦鸡胸肉沙拉</h2>
+                    </div>
+                </div>
+                
+                <!-- 弹窗内容 -->
+                <div class="p-6">
+                    <!-- 快捷信息 -->
+                    <div class="grid grid-cols-3 gap-4 mb-6">
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                            <div class="text-lg font-bold text-gray-800 dark:text-white">25分钟</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">烹饪时长</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                            <div class="text-lg font-bold text-gray-800 dark:text-white">320千卡</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">热量</div>
+                        </div>
+                        <div class="text-center p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+                            <div class="text-lg font-bold text-gray-800 dark:text-white">2人份</div>
+                            <div class="text-xs text-gray-500 dark:text-gray-400">份量</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 营养成分 -->
+                    <div class="mb-6">
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-3">营养成分</h3>
+                        <div class="grid grid-cols-4 gap-2">
+                            <div class="text-center p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                                <div class="text-sm font-bold text-blue-600 dark:text-blue-400">28g</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">蛋白质</div>
+                            </div>
+                            <div class="text-center p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                                <div class="text-sm font-bold text-yellow-600 dark:text-yellow-400">35g</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">碳水</div>
+                            </div>
+                            <div class="text-center p-2 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                                <div class="text-sm font-bold text-green-600 dark:text-green-400">12g</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">脂肪</div>
+                            </div>
+                            <div class="text-center p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                                <div class="text-sm font-bold text-purple-600 dark:text-purple-400">8g</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">纤维</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 食材清单 -->
+                    <div class="mb-6">
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-3">食材清单</h3>
+                        <div class="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">鸡胸肉</span>
+                                    <span class="font-medium text-gray-800 dark:text-white">150g</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">藜麦</span>
+                                    <span class="font-medium text-gray-800 dark:text-white">100g</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">生菜</span>
+                                    <span class="font-medium text-gray-800 dark:text-white">100g</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">小番茄</span>
+                                    <span class="font-medium text-gray-800 dark:text-white">80g</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">黄瓜</span>
+                                    <span class="font-medium text-gray-800 dark:text-white">100g</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-gray-600 dark:text-gray-400">橄榄油</span>
+                                    <span class="font-medium text-gray-800 dark:text-white">10ml</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 烹饪步骤 -->
+                    <div class="mb-6">
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-3">烹饪步骤</h3>
+                        <div class="space-y-4">
+                            <div class="flex">
+                                <div class="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center mr-3 font-bold text-sm">1</div>
+                                <div>
+                                    <h4 class="font-medium text-gray-800 dark:text-white mb-1">准备食材</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">鸡胸肉切块，用少许盐和黑胡椒腌制10分钟。藜麦洗净备用。</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div class="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center mr-3 font-bold text-sm">2</div>
+                                <div>
+                                    <h4 class="font-medium text-gray-800 dark:text-white mb-1">煮藜麦</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">藜麦加水煮15分钟至熟透，沥干水分放凉。</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div class="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center mr-3 font-bold text-sm">3</div>
+                                <div>
+                                    <h4 class="font-medium text-gray-800 dark:text-white mb-1">煎鸡胸肉</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">平底锅加少许橄榄油，将鸡胸肉煎至两面金黄，熟透后切片。</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div class="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center mr-3 font-bold text-sm">4</div>
+                                <div>
+                                    <h4 class="font-medium text-gray-800 dark:text-white mb-1">准备蔬菜</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">生菜洗净撕成小片，小番茄对半切，黄瓜切片。</p>
+                                </div>
+                            </div>
+                            <div class="flex">
+                                <div class="flex-shrink-0 w-8 h-8 bg-primary-500 text-white rounded-full flex items-center justify-center mr-3 font-bold text-sm">5</div>
+                                <div>
+                                    <h4 class="font-medium text-gray-800 dark:text-white mb-1">组装沙拉</h4>
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">将所有食材放入大碗中，淋上橄榄油和柠檬汁，轻轻拌匀即可享用。</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 操作按钮 -->
+                    <div class="flex space-x-3">
+                        <button class="flex-1 py-3 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-white rounded-xl font-medium transition-colors">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                            </svg>
+                            收藏
+                        </button>
+                        <button class="flex-1 py-3 bg-primary-500 hover:bg-primary-600 text-white rounded-xl font-medium transition-colors">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/>
+                            </svg>
+                            分享
+                        </button>
+                        <button class="flex-1 py-3 bg-accent-500 hover:bg-accent-600 text-white rounded-xl font-medium transition-colors">
+                            <svg class="w-5 h-5 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                            </svg>
+                            加入计划
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索弹窗 -->
+    <div id="search-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" id="search-modal-overlay"></div>
+        <div class="absolute top-0 left-0 right-0 bg-white dark:bg-gray-800 p-4 shadow-lg transform transition-all duration-300 -translate-y-full" id="search-modal-content">
+            <div class="relative max-w-2xl mx-auto">
+                <input type="text" id="global-search" placeholder="搜索食谱、食材、营养信息..." class="w-full px-5 py-4 bg-gray-50 dark:bg-gray-700 rounded-2xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-gray-800 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 transition-all duration-200">
+                <button id="close-search" class="absolute right-3 top-1/2 transform -translate-y-1/2 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="search-results" class="max-w-2xl mx-auto mt-2 px-4"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript文件 -->
+    <script src="js/app.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/charts.js"></script>
+</body>
+</html>
