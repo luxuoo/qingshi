@@ -23,16 +23,24 @@ const AppState = {
 };
 
 // ========== API 请求工具 ==========
-const API_BASE = '/api';
+const API_BASE = window.location.protocol === 'file:'
+    ? 'http://localhost:3000/api'
+    : '/api';
 
 async function apiRequest(path, options = {}) {
     const token = localStorage.getItem('token');
     const headers = { 'Content-Type': 'application/json', ...options.headers };
     if (token) headers['Authorization'] = `Bearer ${token}`;
     const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.error || '请求失败');
-    return data;
+    if (!res.ok) {
+        let errMsg = '请求失败';
+        try {
+            const errData = await res.json();
+            errMsg = errData.error || errMsg;
+        } catch {}
+        throw new Error(errMsg);
+    }
+    return res.json();
 }
 
 // ========== 用户认证系统 ==========
@@ -84,6 +92,7 @@ async function handleLogin() {
             document.getElementById('auth-screen').style.display = 'none';
             showToast('登录成功，欢迎回来！');
         }, 300);
+        await Promise.all([loadPosts(), loadWeeklyCheckinFromAPI()]);
     } catch (err) {
         showToast(err.message || '用户名或密码错误');
     }
@@ -134,6 +143,7 @@ async function handleRegister() {
             document.getElementById('auth-screen').style.display = 'none';
             showToast('注册成功，欢迎使用！');
         }, 300);
+        await Promise.all([loadPosts(), loadWeeklyCheckinFromAPI()]);
     } catch (err) {
         showToast(err.message || '注册失败');
     }
@@ -155,8 +165,9 @@ async function checkAuth() {
             AppState.currentUser = profile;
             setCurrentUser(profile);
             document.getElementById('auth-screen').style.display = 'none';
+            // 登录成功后加载后端数据
+            await Promise.all([loadPosts(), loadWeeklyCheckinFromAPI()]);
         } catch {
-            // token过期，清除
             localStorage.removeItem('token');
             localStorage.removeItem('currentUser');
             document.getElementById('auth-screen').style.opacity = '1';
@@ -1321,6 +1332,20 @@ if (currentVersion !== WEEKLY_DATA_VERSION) {
 
 AppState.weeklyCheckin = loadWeeklyCheckinData();
 
+// 从后端API加载打卡数据
+async function loadWeeklyCheckinFromAPI() {
+    if (!AppState.currentUser) return;
+    try {
+        const checkins = await apiRequest('/checkins');
+        const data = {};
+        for (const c of checkins) {
+            data[c.day_of_week] = { checked: c.checked === 1, calories: c.calories };
+        }
+        AppState.weeklyCheckin = data;
+        saveWeeklyCheckinData(data);
+    } catch {}
+}
+
 // 获取今天的星期几（周一到周日）
 function getTodayDayOfWeek() {
     const day = new Date().getDay(); // 0=周日, 1=周一, ...
@@ -1328,71 +1353,83 @@ function getTodayDayOfWeek() {
     return days[day];
 }
 
-function doCheckin() {
+async function doCheckin() {
     const day = AppState.currentDay;
     const plan = WeeklyPlan[day] || WeeklyPlan['周一'];
     const totalCal = (plan.breakfast.reduce((s, i) => s + i.calories, 0) +
                      plan.lunch.reduce((s, i) => s + i.calories, 0) +
                      plan.dinner.reduce((s, i) => s + i.calories, 0));
-    
-    // 更新一周打卡数据（按天存储）
-    AppState.weeklyCheckin[day] = {
-        checked: true,
-        calories: totalCal
-    };
-    saveWeeklyCheckinData(AppState.weeklyCheckin);
-    
-    // 如果打卡的是今天，也更新今日打卡数据
-    if (day === getTodayDayOfWeek()) {
-        AppState.checkin = {
-            date: getTodayKey(),
-            checked: true,
-            meals: {
-                breakfast: plan.breakfast.reduce((s, i) => s + i.calories, 0),
-                lunch: plan.lunch.reduce((s, i) => s + i.calories, 0),
-                dinner: plan.dinner.reduce((s, i) => s + i.calories, 0)
-            },
-            details: {
-                breakfast: plan.breakfast.map(i => i.name).join(' + '),
-                lunch: plan.lunch.map(i => i.name).join(' + '),
-                dinner: plan.dinner.map(i => i.name).join(' + ')
-            }
-        };
-        saveCheckinData(AppState.checkin);
-        renderCheckin();
+
+    const today = new Date();
+    const checkinDate = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+
+    try {
+        if (AppState.currentUser) {
+            await apiRequest('/checkins', {
+                method: 'POST',
+                body: JSON.stringify({ checkin_date: checkinDate, day_of_week: day, calories: totalCal })
+            });
+            await loadWeeklyCheckinFromAPI();
+        } else {
+            AppState.weeklyCheckin[day] = { checked: true, calories: totalCal };
+            saveWeeklyCheckinData(AppState.weeklyCheckin);
+        }
+
+        if (day === getTodayDayOfWeek()) {
+            AppState.checkin = {
+                date: getTodayKey(), checked: true,
+                meals: {
+                    breakfast: plan.breakfast.reduce((s, i) => s + i.calories, 0),
+                    lunch: plan.lunch.reduce((s, i) => s + i.calories, 0),
+                    dinner: plan.dinner.reduce((s, i) => s + i.calories, 0)
+                }
+            };
+            saveCheckinData(AppState.checkin);
+            renderCheckin();
+        }
+        renderWeeklyOverview();
+        renderDailyPlan();
+        if (day === getTodayDayOfWeek()) {
+            renderNutritionOverview();
+            initChartsSafe();
+        }
+        showToast(`${day}打卡成功！`);
+    } catch (err) {
+        showToast(err.message || '打卡失败');
     }
-    
-    renderWeeklyOverview();
-    renderDailyPlan();
-    if (day === getTodayDayOfWeek()) {
-        renderNutritionOverview();
-        initChartsSafe();
-    }
-    showToast(`${day}打卡成功！`);
 }
 
-function undoCheckin() {
+async function undoCheckin() {
     const day = AppState.currentDay;
-    
-    // 更新一周打卡数据
-    AppState.weeklyCheckin[day] = {
-        checked: false,
-        calories: 0
-    };
-    saveWeeklyCheckinData(AppState.weeklyCheckin);
-    
-    // 如果取消的是今天，也更新今日打卡数据
-    if (day === getTodayDayOfWeek()) {
-        AppState.checkin = { date: getTodayKey(), checked: false, meals: {} };
-        saveCheckinData(AppState.checkin);
-        renderCheckin();
-        renderNutritionOverview();
-        initChartsSafe();
+    const today = new Date();
+    const checkinDate = today.getFullYear() + '-' +
+        String(today.getMonth() + 1).padStart(2, '0') + '-' +
+        String(today.getDate()).padStart(2, '0');
+
+    try {
+        if (AppState.currentUser) {
+            await apiRequest(`/checkins/${checkinDate}`, { method: 'DELETE' });
+            await loadWeeklyCheckinFromAPI();
+        } else {
+            AppState.weeklyCheckin[day] = { checked: false, calories: 0 };
+            saveWeeklyCheckinData(AppState.weeklyCheckin);
+        }
+
+        if (day === getTodayDayOfWeek()) {
+            AppState.checkin = { date: getTodayKey(), checked: false, meals: {} };
+            saveCheckinData(AppState.checkin);
+            renderCheckin();
+            renderNutritionOverview();
+            initChartsSafe();
+        }
+        renderWeeklyOverview();
+        renderDailyPlan();
+        showToast(`已取消${day}打卡`);
+    } catch (err) {
+        showToast(err.message || '取消打卡失败');
     }
-    
-    renderWeeklyOverview();
-    renderDailyPlan();
-    showToast(`已取消${day}打卡`);
 }
 
 function renderCheckin() {
@@ -1461,64 +1498,75 @@ function renderCheckin() {
 }
 
 // 首页今日打卡（独立函数）
-function doTodayCheckin() {
+async function doTodayCheckin() {
     const today = getTodayDayOfWeek();
     const plan = WeeklyPlan[today] || WeeklyPlan['周一'];
     const totalCal = (plan.breakfast.reduce((s, i) => s + i.calories, 0) +
                      plan.lunch.reduce((s, i) => s + i.calories, 0) +
                      plan.dinner.reduce((s, i) => s + i.calories, 0));
-    
-    // 更新一周打卡数据
-    AppState.weeklyCheckin[today] = {
-        checked: true,
-        calories: totalCal
-    };
-    saveWeeklyCheckinData(AppState.weeklyCheckin);
-    
-    // 更新今日打卡数据
-    AppState.checkin = {
-        date: getTodayKey(),
-        checked: true,
-        meals: {
-            breakfast: plan.breakfast.reduce((s, i) => s + i.calories, 0),
-            lunch: plan.lunch.reduce((s, i) => s + i.calories, 0),
-            dinner: plan.dinner.reduce((s, i) => s + i.calories, 0)
-        },
-        details: {
-            breakfast: plan.breakfast.map(i => i.name).join(' + '),
-            lunch: plan.lunch.map(i => i.name).join(' + '),
-            dinner: plan.dinner.map(i => i.name).join(' + ')
+
+    const now = new Date();
+    const checkinDate = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+
+    try {
+        if (AppState.currentUser) {
+            await apiRequest('/checkins', {
+                method: 'POST',
+                body: JSON.stringify({ checkin_date: checkinDate, day_of_week: today, calories: totalCal })
+            });
+            await loadWeeklyCheckinFromAPI();
+        } else {
+            AppState.weeklyCheckin[today] = { checked: true, calories: totalCal };
+            saveWeeklyCheckinData(AppState.weeklyCheckin);
         }
-    };
-    saveCheckinData(AppState.checkin);
-    
-    renderCheckin();
-    renderWeeklyOverview();
-    renderNutritionOverview();
-    initChartsSafe();
-    showToast('今日打卡成功！');
+
+        AppState.checkin = {
+            date: getTodayKey(), checked: true,
+            meals: {
+                breakfast: plan.breakfast.reduce((s, i) => s + i.calories, 0),
+                lunch: plan.lunch.reduce((s, i) => s + i.calories, 0),
+                dinner: plan.dinner.reduce((s, i) => s + i.calories, 0)
+            }
+        };
+        saveCheckinData(AppState.checkin);
+        renderCheckin();
+        renderWeeklyOverview();
+        renderNutritionOverview();
+        initChartsSafe();
+        showToast('今日打卡成功！');
+    } catch (err) {
+        showToast(err.message || '打卡失败');
+    }
 }
 
-// 首页取消今日打卡（独立函数）
-function undoTodayCheckin() {
+async function undoTodayCheckin() {
     const today = getTodayDayOfWeek();
-    
-    // 更新一周打卡数据
-    AppState.weeklyCheckin[today] = {
-        checked: false,
-        calories: 0
-    };
-    saveWeeklyCheckinData(AppState.weeklyCheckin);
-    
-    // 更新今日打卡数据
-    AppState.checkin = { date: getTodayKey(), checked: false, meals: {} };
-    saveCheckinData(AppState.checkin);
-    
-    renderCheckin();
-    renderWeeklyOverview();
-    renderNutritionOverview();
-    initChartsSafe();
-    showToast('已取消今日打卡');
+    const now = new Date();
+    const checkinDate = now.getFullYear() + '-' +
+        String(now.getMonth() + 1).padStart(2, '0') + '-' +
+        String(now.getDate()).padStart(2, '0');
+
+    try {
+        if (AppState.currentUser) {
+            await apiRequest(`/checkins/${checkinDate}`, { method: 'DELETE' });
+            await loadWeeklyCheckinFromAPI();
+        } else {
+            AppState.weeklyCheckin[today] = { checked: false, calories: 0 };
+            saveWeeklyCheckinData(AppState.weeklyCheckin);
+        }
+
+        AppState.checkin = { date: getTodayKey(), checked: false, meals: {} };
+        saveCheckinData(AppState.checkin);
+        renderCheckin();
+        renderWeeklyOverview();
+        renderNutritionOverview();
+        initChartsSafe();
+        showToast('已取消今日打卡');
+    } catch (err) {
+        showToast(err.message || '取消打卡失败');
+    }
 }
 
 // 渲染7天概览
@@ -1783,57 +1831,42 @@ function initChartsSafe() {
 }
 
 // ========== 社区分享功能 ==========
-function createPost() {
+async function createPost() {
     const title = document.getElementById('post-title').value.trim();
     const content = document.getElementById('post-content').value.trim();
     const tag = document.getElementById('post-tag').value;
     const imageInput = document.getElementById('post-image-input');
-    
+
     if (!title || !content) {
         showToast('请输入标题和内容');
         return;
     }
-    
+
     const user = AppState.currentUser;
     if (!user) {
         showToast('请先登录');
         return;
     }
-    
-    const post = {
-        id: Date.now(),
-        title,
-        content,
-        tag,
-        author: user.username,
-        authorId: user.id,
-        createdAt: new Date().toISOString(),
-        likes: [],
-        comments: [],
-        image: null
-    };
-    
-    // 处理图片
-    if (imageInput.files && imageInput.files[0]) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            post.image = e.target.result;
-            savePost(post);
-            clearPostForm();
-            showToast('发布成功！');
-        };
-        reader.readAsDataURL(imageInput.files[0]);
-    } else {
-        savePost(post);
+
+    try {
+        const imageData = imageInput.files && imageInput.files[0]
+            ? await new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.readAsDataURL(imageInput.files[0]);
+            })
+            : null;
+
+        await apiRequest('/posts', {
+            method: 'POST',
+            body: JSON.stringify({ title, content, tag, image: imageData })
+        });
         clearPostForm();
         showToast('发布成功！');
+        await loadPosts();
+    } catch (err) {
+        showToast(err.message || '发布失败');
     }
-}
-
-function savePost(post) {
-    AppState.posts.unshift(post);
-    localStorage.setItem('posts', JSON.stringify(AppState.posts));
-    renderPostList();
 }
 
 function clearPostForm() {
@@ -1845,14 +1878,14 @@ function clearPostForm() {
 function renderPostList() {
     const container = document.getElementById('post-list');
     if (!container) return;
-    
+
     let posts = [...AppState.posts];
     const filter = AppState.currentPostFilter;
-    
+
     if (filter !== 'all') {
         posts = posts.filter(p => p.tag === filter);
     }
-    
+
     if (!posts.length) {
         container.innerHTML = `
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-8 shadow-card text-center">
@@ -1866,39 +1899,35 @@ function renderPostList() {
             </div>`;
         return;
     }
-    
+
     container.innerHTML = posts.map(post => {
         const timeAgo = getTimeAgo(post.createdAt);
-        const isLiked = post.likes.includes(AppState.currentUser?.id);
-        const likeCount = post.likes.length;
+        const likeCount = post.likeCount || 0;
         const commentCount = post.comments.length;
-        
+
         return `
             <div class="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-card hover:shadow-card-hover transition-all duration-300">
-                <!-- 帖子头部 -->
                 <div class="flex items-center justify-between mb-4">
                     <div class="flex items-center">
                         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center mr-3">
-                            <span class="text-white font-medium">${post.author.charAt(0).toUpperCase()}</span>
+                            <span class="text-white font-medium">${(post.author || '?').charAt(0).toUpperCase()}</span>
                         </div>
                         <div>
-                            <div class="font-medium text-gray-800 dark:text-white text-sm">${post.author}</div>
+                            <div class="font-medium text-gray-800 dark:text-white text-sm">${post.author || '匿名'}</div>
                             <div class="text-xs text-gray-500 dark:text-gray-400">${timeAgo}</div>
                         </div>
                     </div>
                     <span class="px-3 py-1 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-full text-xs font-medium">${post.tag}</span>
                 </div>
-                
-                <!-- 帖子内容 -->
+
                 <h3 class="text-lg font-bold text-gray-800 dark:text-white mb-2">${escapeHtml(post.title)}</h3>
                 <p class="text-gray-600 dark:text-gray-400 text-sm mb-4 whitespace-pre-wrap">${escapeHtml(post.content)}</p>
-                
+
                 ${post.image ? `<div class="mb-4 rounded-xl overflow-hidden"><img src="${post.image}" alt="帖子图片" class="w-full h-48 object-cover"></div>` : ''}
-                
-                <!-- 操作按钮 -->
+
                 <div class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <button onclick="togglePostLike(${post.id})" class="flex items-center space-x-2 text-sm ${isLiked ? 'text-red-500' : 'text-gray-500 dark:text-gray-400'} hover:text-red-500 transition-colors">
-                        <svg class="w-5 h-5 ${isLiked ? 'fill-current' : ''}" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="togglePostLike(${post.id})" class="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 hover:text-red-500 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                         </svg>
                         <span>${likeCount} 赞</span>
@@ -1916,15 +1945,11 @@ function renderPostList() {
                         <span>分享</span>
                     </button>
                 </div>
-                
-                <!-- 评论区域 -->
+
                 <div id="comments-${post.id}" class="hidden mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
-                    <!-- 评论列表 -->
                     <div id="comment-list-${post.id}" class="space-y-3 mb-4">
                         ${renderComments(post.comments, post.id)}
                     </div>
-                    
-                    <!-- 发表评论 -->
                     <div class="flex items-start space-x-3">
                         <div class="w-8 h-8 rounded-full bg-gradient-to-br from-accent-400 to-accent-600 flex items-center justify-center flex-shrink-0">
                             <span class="text-white text-xs font-medium">${AppState.currentUser ? AppState.currentUser.username.charAt(0).toUpperCase() : '?'}</span>
@@ -1944,38 +1969,35 @@ function renderPostList() {
 function renderComments(comments, postId, isReply = false) {
     return comments.map(comment => {
         const timeAgo = getTimeAgo(comment.createdAt);
-        const isLiked = comment.likes.includes(AppState.currentUser?.id);
-        const likeCount = comment.likes.length;
-        
+        const likeCount = comment.likeCount || 0;
+
         return `
             <div class="${isReply ? 'ml-8 pt-3 border-t border-gray-50 dark:border-gray-700/50' : ''}">
                 <div class="flex items-start space-x-3">
                     <div class="w-8 h-8 rounded-full bg-gradient-to-br from-primary-400 to-primary-600 flex items-center justify-center flex-shrink-0">
-                        <span class="text-white text-xs font-medium">${comment.author.charAt(0).toUpperCase()}</span>
+                        <span class="text-white text-xs font-medium">${(comment.author || '?').charAt(0).toUpperCase()}</span>
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center space-x-2 mb-1">
-                            <span class="font-medium text-gray-800 dark:text-white text-sm">${comment.author}</span>
+                            <span class="font-medium text-gray-800 dark:text-white text-sm">${comment.author || '匿名'}</span>
                             <span class="text-xs text-gray-500 dark:text-gray-400">${timeAgo}</span>
                         </div>
                         <p class="text-gray-600 dark:text-gray-400 text-sm mb-2">${escapeHtml(comment.content)}</p>
                         <div class="flex items-center space-x-4">
-                            <button onclick="toggleCommentLike(${postId}, '${comment.id}')" class="flex items-center space-x-1 text-xs ${isLiked ? 'text-red-500' : 'text-gray-400 dark:text-gray-500'} hover:text-red-500 transition-colors">
-                                <svg class="w-4 h-4 ${isLiked ? 'fill-current' : ''}" fill="${isLiked ? 'currentColor' : 'none'}" stroke="currentColor" viewBox="0 0 24 24">
+                            <button onclick="toggleCommentLike(${postId}, '${comment.id}')" class="flex items-center space-x-1 text-xs text-gray-400 dark:text-gray-500 hover:text-red-500 transition-colors">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                                 </svg>
                                 <span>${likeCount}</span>
                             </button>
                             <button onclick="showReplyInput(${postId}, '${comment.id}')" class="text-xs text-gray-400 dark:text-gray-500 hover:text-primary-500 transition-colors">回复</button>
                         </div>
-                        <!-- 回复输入框 -->
                         <div id="reply-input-${comment.id}" class="hidden mt-3">
                             <div class="flex items-start space-x-2">
-                                <textarea id="reply-text-${comment.id}" placeholder="回复 ${comment.author}..." rows="2" class="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 resize-none"></textarea>
+                                <textarea id="reply-text-${comment.id}" placeholder="回复 ${comment.author || '匿名'}..." rows="2" class="flex-1 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-xl border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 text-gray-800 dark:text-white text-sm placeholder-gray-400 dark:placeholder-gray-500 resize-none"></textarea>
                                 <button onclick="addReply(${postId}, '${comment.id}')" class="px-3 py-2 bg-primary-500 hover:bg-primary-600 text-white rounded-lg text-xs font-medium transition-colors">回复</button>
                             </div>
                         </div>
-                        <!-- 回复列表 -->
                         ${comment.replies && comment.replies.length ? `<div class="mt-3 space-y-3">${renderComments(comment.replies, postId, true)}</div>` : ''}
                     </div>
                 </div>
@@ -1990,44 +2012,35 @@ function toggleComments(postId) {
     }
 }
 
-function addComment(postId) {
+async function addComment(postId) {
     const input = document.getElementById(`comment-input-${postId}`);
     const content = input.value.trim();
-    
+
     if (!content) {
         showToast('请输入评论内容');
         return;
     }
-    
-    const user = AppState.currentUser;
-    if (!user) {
+
+    if (!AppState.currentUser) {
         showToast('请先登录');
         return;
     }
-    
-    const post = AppState.posts.find(p => p.id === postId);
-    if (!post) return;
-    
-    const comment = {
-        id: 'c' + Date.now(),
-        content,
-        author: user.username,
-        authorId: user.id,
-        createdAt: new Date().toISOString(),
-        likes: [],
-        replies: []
-    };
-    
-    post.comments.push(comment);
-    localStorage.setItem('posts', JSON.stringify(AppState.posts));
-    input.value = '';
-    renderPostList();
-    // 重新展开评论区
-    setTimeout(() => {
-        const container = document.getElementById(`comments-${postId}`);
-        if (container) container.classList.remove('hidden');
-    }, 10);
-    showToast('评论成功！');
+
+    try {
+        await apiRequest(`/posts/${postId}/comments`, {
+            method: 'POST',
+            body: JSON.stringify({ content })
+        });
+        input.value = '';
+        showToast('评论成功！');
+        await loadPosts();
+        setTimeout(() => {
+            const container = document.getElementById(`comments-${postId}`);
+            if (container) container.classList.remove('hidden');
+        }, 10);
+    } catch (err) {
+        showToast(err.message || '评论失败');
+    }
 }
 
 function showReplyInput(postId, commentId) {
@@ -2040,122 +2053,68 @@ function showReplyInput(postId, commentId) {
     }
 }
 
-function addReply(postId, commentId) {
+async function addReply(postId, commentId) {
     const input = document.getElementById(`reply-text-${commentId}`);
     const content = input.value.trim();
-    
+
     if (!content) {
         showToast('请输入回复内容');
         return;
     }
-    
-    const user = AppState.currentUser;
-    if (!user) {
+
+    if (!AppState.currentUser) {
         showToast('请先登录');
         return;
     }
-    
-    const post = AppState.posts.find(p => p.id === postId);
-    if (!post) return;
-    
-    // 递归查找评论
-    function findComment(comments) {
-        for (let comment of comments) {
-            if (comment.id === commentId) return comment;
-            if (comment.replies) {
-                const found = findComment(comment.replies);
-                if (found) return found;
-            }
-        }
-        return null;
+
+    try {
+        await apiRequest(`/posts/${postId}/comments`, {
+            method: 'POST',
+            body: JSON.stringify({ content, parent_id: parseInt(commentId) })
+        });
+        showToast('回复成功！');
+        await loadPosts();
+        setTimeout(() => {
+            const container = document.getElementById(`comments-${postId}`);
+            if (container) container.classList.remove('hidden');
+        }, 10);
+    } catch (err) {
+        showToast(err.message || '回复失败');
     }
-    
-    const parentComment = findComment(post.comments);
-    if (!parentComment) return;
-    
-    const reply = {
-        id: 'r' + Date.now(),
-        content,
-        author: user.username,
-        authorId: user.id,
-        createdAt: new Date().toISOString(),
-        likes: [],
-        replies: []
-    };
-    
-    if (!parentComment.replies) parentComment.replies = [];
-    parentComment.replies.push(reply);
-    
-    localStorage.setItem('posts', JSON.stringify(AppState.posts));
-    renderPostList();
-    // 重新展开评论区
-    setTimeout(() => {
-        const container = document.getElementById(`comments-${postId}`);
-        if (container) container.classList.remove('hidden');
-    }, 10);
-    showToast('回复成功！');
 }
 
-function togglePostLike(postId) {
-    const user = AppState.currentUser;
-    if (!user) {
+async function togglePostLike(postId) {
+    if (!AppState.currentUser) {
         showToast('请先登录');
         return;
     }
-    
-    const post = AppState.posts.find(p => p.id === postId);
-    if (!post) return;
-    
-    const idx = post.likes.indexOf(user.id);
-    if (idx === -1) {
-        post.likes.push(user.id);
-    } else {
-        post.likes.splice(idx, 1);
+
+    try {
+        const result = await apiRequest(`/posts/${postId}/like`, { method: 'POST' });
+        await loadPosts();
+        renderPostList();
+    } catch (err) {
+        showToast(err.message || '操作失败');
     }
-    
-    localStorage.setItem('posts', JSON.stringify(AppState.posts));
-    renderPostList();
 }
 
-function toggleCommentLike(postId, commentId) {
-    const user = AppState.currentUser;
-    if (!user) {
+async function toggleCommentLike(postId, commentId) {
+    if (!AppState.currentUser) {
         showToast('请先登录');
         return;
     }
-    
-    const post = AppState.posts.find(p => p.id === postId);
-    if (!post) return;
-    
-    // 递归查找评论
-    function findComment(comments) {
-        for (let comment of comments) {
-            if (comment.id === commentId) return comment;
-            if (comment.replies) {
-                const found = findComment(comment.replies);
-                if (found) return found;
-            }
-        }
-        return null;
+
+    try {
+        await apiRequest(`/comments/${commentId}/like`, { method: 'POST' });
+        await loadPosts();
+        renderPostList();
+        setTimeout(() => {
+            const container = document.getElementById(`comments-${postId}`);
+            if (container) container.classList.remove('hidden');
+        }, 10);
+    } catch (err) {
+        showToast(err.message || '操作失败');
     }
-    
-    const comment = findComment(post.comments);
-    if (!comment) return;
-    
-    const idx = comment.likes.indexOf(user.id);
-    if (idx === -1) {
-        comment.likes.push(user.id);
-    } else {
-        comment.likes.splice(idx, 1);
-    }
-    
-    localStorage.setItem('posts', JSON.stringify(AppState.posts));
-    renderPostList();
-    // 重新展开评论区
-    setTimeout(() => {
-        const container = document.getElementById(`comments-${postId}`);
-        if (container) container.classList.remove('hidden');
-    }, 10);
 }
 
 function sharePost(postId) {
@@ -2191,23 +2150,66 @@ function escapeHtml(text) {
 }
 
 function initCommunityEvents() {
-    // 帖子筛选
     document.querySelectorAll('.post-filter').forEach(btn => {
         btn.addEventListener('click', e => {
             document.querySelectorAll('.post-filter').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             AppState.currentPostFilter = e.target.getAttribute('data-filter');
-            renderPostList();
+            loadPosts();
         });
     });
-    
-    // 图片上传
+
     document.getElementById('add-image-btn')?.addEventListener('click', () => {
         document.getElementById('post-image-input')?.click();
     });
 }
 
 // 初始化时加载帖子数据
-function loadPosts() {
-    AppState.posts = JSON.parse(localStorage.getItem('posts') || '[]');
+async function loadPosts() {
+    try {
+        const tagFilter = AppState.currentPostFilter !== 'all' ? `?tag=${AppState.currentPostFilter}` : '';
+        const posts = await apiRequest(`/posts${tagFilter}`);
+        AppState.posts = posts.map(p => ({
+            id: p.id,
+            title: p.title,
+            content: p.content,
+            tag: p.tag,
+            author: p.author,
+            authorId: p.user_id,
+            createdAt: p.created_at,
+            image: p.image,
+            likes: [],
+            likeCount: p.like_count || 0,
+            comments: []
+        }));
+        // 加载每篇帖子的评论
+        for (let post of AppState.posts) {
+            try {
+                const comments = await apiRequest(`/posts/${post.id}/comments`);
+                post.comments = comments.map(c => ({
+                    id: c.id,
+                    content: c.content,
+                    author: c.author,
+                    authorId: c.user_id,
+                    createdAt: c.created_at,
+                    likes: [],
+                    likeCount: c.like_count || 0,
+                    replies: (c.replies || []).map(r => ({
+                        id: r.id,
+                        content: r.content,
+                        author: r.author,
+                        authorId: r.user_id,
+                        createdAt: r.created_at,
+                        likes: [],
+                        likeCount: r.like_count || 0,
+                        replies: []
+                    }))
+                }));
+            } catch {}
+        }
+        renderPostList();
+    } catch {
+        AppState.posts = [];
+        renderPostList();
+    }
 }
