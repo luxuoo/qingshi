@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
@@ -6,8 +7,8 @@ const path = require('path');
 const { pool, initDB } = require('./db');
 
 const app = express();
-const PORT = 3000;
-const JWT_SECRET = 'qingshiyue_secret_2024';
+const PORT = parseInt(process.env.PORT) || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || 'qingshiyue_secret_2024';
 
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
@@ -270,10 +271,15 @@ app.get('/{*splat}', (req, res) => {
 });
 
 async function start() {
-    await initDB();
-    app.listen(PORT, () => {
-        console.log(`Server running at http://localhost:${PORT}`);
-    });
+    try {
+        await initDB();
+        app.listen(PORT, '0.0.0.0', () => {
+            console.log(`Server running at http://localhost:${PORT}`);
+        });
+    } catch (err) {
+        console.error('服务启动失败:', err.message);
+        process.exit(1);
+    }
 }
 
 start();

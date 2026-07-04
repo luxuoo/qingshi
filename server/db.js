@@ -1,17 +1,55 @@
 const mysql = require('mysql2/promise');
 
-const pool = mysql.createPool({
-    host: 'localhost',
-    user: 'root',
-    password: '',
-    database: 'qingshiyue',
+// 支持环境变量配置，适配宝塔面板部署
+const DB_CONFIG = {
+    host: process.env.DB_HOST || 'localhost',
+    user: process.env.DB_USER || 'root',
+    password: process.env.DB_PASSWORD || '',
+    port: parseInt(process.env.DB_PORT) || 3306,
+    database: process.env.DB_NAME || 'qingshiyue',
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
-});
+};
+
+const pool = mysql.createPool(DB_CONFIG);
 
 async function initDB() {
-    const conn = await pool.getConnection();
+    let conn;
+    try {
+        // 先尝试连接到目标数据库
+        conn = await pool.getConnection();
+        console.log(`已连接到数据库: ${DB_CONFIG.database}`);
+    } catch (err) {
+        // 如果数据库不存在，先连接 MySQL（不指定数据库）并创建它
+        if (err.code === 'ER_BAD_DB_ERROR') {
+            console.log(`数据库 ${DB_CONFIG.database} 不存在，正在自动创建...`);
+            const tempPool = mysql.createPool({
+                host: DB_CONFIG.host,
+                user: DB_CONFIG.user,
+                password: DB_CONFIG.password,
+                port: DB_CONFIG.port,
+                waitForConnections: true,
+                connectionLimit: 5
+            });
+            const tempConn = await tempPool.getConnection();
+            try {
+                await tempConn.query(
+                    `CREATE DATABASE IF NOT EXISTS \`${DB_CONFIG.database}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`
+                );
+                console.log(`数据库 ${DB_CONFIG.database} 创建成功`);
+            } finally {
+                tempConn.release();
+                await tempPool.end();
+            }
+            // 重新获取连接
+            conn = await pool.getConnection();
+        } else {
+            console.error('数据库连接失败:', err.message);
+            throw err;
+        }
+    }
+
     try {
         await conn.query(`
             CREATE TABLE IF NOT EXISTS users (
@@ -103,7 +141,7 @@ async function initDB() {
             )
         `);
 
-        console.log('Database initialized successfully');
+        console.log('数据库表初始化完成');
     } finally {
         conn.release();
     }
